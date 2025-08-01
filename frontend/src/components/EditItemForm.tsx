@@ -1,0 +1,217 @@
+import React, { useState } from 'react';
+import { ActionItem, UpdateActionItemDto } from '../types/ActionItem';
+import { actionItemsApi } from '../api/actionItems';
+
+interface EditItemFormProps {
+  item: ActionItem;
+  onClose: () => void;
+  onUpdated: () => void;
+}
+
+const EditItemForm: React.FC<EditItemFormProps> = ({ item, onClose, onUpdated }) => {
+  const [form, setForm] = useState<UpdateActionItemDto>({
+    title: item.title,
+    description: item.description || '',
+    status: item.status,
+    priority: item.priority,
+    due_date: item.due_date || '',
+    assignee: item.assignee || '',
+    tags: item.tags || []
+  });
+  const [tagInput, setTagInput] = useState('');
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await actionItemsApi.update(item.id, form);
+      onUpdated();
+      onClose();
+    } catch (error) {
+      console.error('Failed to update item:', error);
+    }
+  };
+
+  const addTag = () => {
+    if (tagInput.trim() && form.tags) {
+      setForm({ ...form, tags: [...form.tags, tagInput.trim()] });
+      setTagInput('');
+    }
+  };
+
+  const removeTag = (index: number) => {
+    if (form.tags) {
+      setForm({ ...form, tags: form.tags.filter((_, i) => i !== index) });
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 animate-fadeIn">
+      <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl p-8 w-full max-w-lg mx-4 animate-slideIn">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-xl font-bold gradient-text">
+            Edit Action Item
+          </h2>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-white transition-colors"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">
+              Title *
+            </label>
+            <input
+              type="text"
+              required
+              className="input-glass"
+              value={form.title}
+              onChange={(e) => setForm({ ...form, title: e.target.value })}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">
+              Description
+            </label>
+            <textarea
+              className="input-glass resize-none"
+              rows={3}
+              value={form.description}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">
+                Status
+              </label>
+              <select
+                className="input-glass"
+                value={form.status}
+                onChange={(e) => setForm({ ...form, status: e.target.value as any })}
+              >
+                <option value="todo">To Do</option>
+                <option value="in_progress">In Progress</option>
+                <option value="review">Review</option>
+                <option value="done">Done</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">
+                Priority
+              </label>
+              <select
+                className="input-glass"
+                value={form.priority}
+                onChange={(e) => setForm({ ...form, priority: e.target.value as any })}
+              >
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">
+                Due Date
+              </label>
+              <div className="relative">
+                <input
+                  type="date"
+                  className="input-glass pr-10"
+                  value={form.due_date}
+                  onChange={(e) => setForm({ ...form, due_date: e.target.value })}
+                />
+                <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
+                  <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">
+                Assignee
+              </label>
+              <input
+                type="text"
+                className="input-glass"
+                value={form.assignee}
+                onChange={(e) => setForm({ ...form, assignee: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">
+              Tags
+            </label>
+            <div className="flex gap-2 mb-2">
+              <input
+                type="text"
+                className="input-glass flex-1"
+                value={tagInput}
+                onChange={(e) => setTagInput(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())}
+                placeholder="Add a tag..."
+              />
+              <button
+                type="button"
+                onClick={addTag}
+                className="px-4 py-2 bg-[#2a2a2a] border border-[#3a3a3a] rounded-lg hover:bg-[#3a3a3a] transition-colors text-gray-300"
+              >
+                Add
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {form.tags?.map((tag, index) => (
+                <span
+                  key={index}
+                  className="px-3 py-1 bg-[#00ff88]/10 text-[#00ff88] rounded-full text-sm flex items-center gap-2"
+                >
+                  {tag}
+                  <button
+                    type="button"
+                    onClick={() => removeTag(index)}
+                    className="text-[#00ff88] hover:text-white transition-colors"
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-6 py-2 bg-[#2a2a2a] border border-[#3a3a3a] rounded-lg hover:bg-[#3a3a3a] transition-colors text-gray-300"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="btn-primary px-6 py-2 text-sm"
+            >
+              Update
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+export default EditItemForm;
