@@ -7,6 +7,7 @@ export const actionItemsApi = {
   getAll: async (filters?: {
     status?: string;
     priority?: string;
+    category?: string;
     assignee?: string;
     search?: string;
   }): Promise<ActionItem[]> => {

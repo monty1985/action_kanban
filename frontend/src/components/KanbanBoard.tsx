@@ -3,7 +3,7 @@ import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautif
 import { ActionItem } from '../types/ActionItem';
 import { actionItemsApi } from '../api/actionItems';
 import EditItemForm from './EditItemForm';
-import { formatDate, isOverdue } from '../utils/dateUtils';
+import { formatDate } from '../utils/dateUtils';
 
 interface KanbanBoardProps {
   items: ActionItem[];
@@ -12,8 +12,7 @@ interface KanbanBoardProps {
 
 const columns = [
   { id: 'todo', title: 'To Do', color: '#666' },
-  { id: 'in_progress', title: 'In Progress', color: '#00a8ff' },
-  { id: 'review', title: 'Review', color: '#ff6b6b' },
+  { id: 'overdue', title: 'Overdue', color: '#ff6b6b' },
   { id: 'done', title: 'Done', color: '#00ff88' }
 ];
 
@@ -34,7 +33,15 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ items, onUpdate }) => {
     if (!result.destination) return;
     
     const itemId = result.draggableId;
-    const newStatus = result.destination.droppableId as ActionItem['status'];
+    const destinationId = result.destination.droppableId;
+    
+    // Overdue is not a status, only handle todo and done
+    if (destinationId === 'overdue') {
+      // Can't drag to overdue column
+      return;
+    }
+    
+    const newStatus = destinationId as ActionItem['status'];
     
     try {
       await actionItemsApi.updateStatus(itemId, newStatus);
@@ -44,8 +51,40 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ items, onUpdate }) => {
     }
   };
 
-  const getItemsByStatus = (status: string) => {
-    return items.filter(item => item.status === status);
+  const isOverdue = (item: ActionItem) => {
+    if (!item.due_date || item.status === 'done') return false;
+    const dueDate = new Date(item.due_date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return dueDate < today;
+  };
+
+  const sortByPriority = (items: ActionItem[]) => {
+    const priorityOrder = { high: 0, medium: 1, low: 2 };
+    return items.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
+  };
+
+  const getItemsByColumn = (columnId: string) => {
+    let filtered: ActionItem[];
+    if (columnId === 'overdue') {
+      filtered = items.filter(item => item.status === 'todo' && isOverdue(item));
+    } else if (columnId === 'todo') {
+      filtered = items.filter(item => item.status === 'todo' && !isOverdue(item));
+    } else {
+      filtered = items.filter(item => item.status === columnId);
+    }
+    return sortByPriority(filtered);
+  };
+
+  const getPersonColor = (person?: string) => {
+    if (!person) return 'bg-gray-700';
+    const colors: Record<string, string> = {
+      'mohan': 'bg-blue-600',
+      'archana': 'bg-pink-600',
+      'arya': 'bg-purple-600',
+      'sairav': 'bg-green-600'
+    };
+    return colors[person.toLowerCase()] || 'bg-gray-700';
   };
 
   const handleCardDoubleClick = (item: ActionItem) => {
@@ -56,7 +95,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ items, onUpdate }) => {
   return (
     <>
     <DragDropContext onDragEnd={handleDragEnd}>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-[1fr_2fr_1fr] gap-4">
         {columns.map(column => (
           <div 
             key={column.id} 
@@ -74,7 +113,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ items, onUpdate }) => {
                     color: column.color
                   }}
                 >
-                  {getItemsByStatus(column.id).length}
+                  {getItemsByColumn(column.id).length}
                 </span>
               </div>
             </div>
@@ -89,7 +128,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ items, onUpdate }) => {
                   }`}
                   style={{ maxHeight: 'calc(100vh - 320px)' }}
                 >
-                  {getItemsByStatus(column.id).map((item, index) => (
+                  {getItemsByColumn(column.id).map((item, index) => (
                     <Draggable key={item.id} draggableId={item.id} index={index}>
                       {(provided, snapshot) => (
                         <div
@@ -122,15 +161,32 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ items, onUpdate }) => {
                               </svg>
                             </button>
                           )}
+                          {item.for_whom && (
+                            <div className={`${getPersonColor(item.for_whom)} h-1 rounded-t-lg -m-3 mb-2`} />
+                          )}
                           <div className="flex items-start justify-between mb-2">
                             <h4 className="text-sm font-medium text-white line-clamp-2 flex-1 pr-2">
                               {item.title}
                             </h4>
-                            <div 
-                              className="w-2 h-2 rounded-full flex-shrink-0 mt-1.5"
-                              style={{ backgroundColor: getPriorityColor(item.priority) }}
-                              title={`${item.priority} priority`}
-                            />
+                            <div className="flex items-center gap-2">
+                              {item.for_whom && (
+                                <span className="text-xs text-gray-400">
+                                  {item.for_whom}
+                                </span>
+                              )}
+                              <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
+                                item.category === 'professional' 
+                                  ? 'bg-[#00a8ff]/20 text-[#00a8ff]' 
+                                  : 'bg-purple-500/20 text-purple-400'
+                              }`}>
+                                {item.category === 'professional' ? '💼' : '🏠'}
+                              </span>
+                              <div 
+                                className="w-2 h-2 rounded-full flex-shrink-0"
+                                style={{ backgroundColor: getPriorityColor(item.priority) }}
+                                title={`${item.priority} priority`}
+                              />
+                            </div>
                           </div>
                           
                           {item.description && (
@@ -147,7 +203,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ items, onUpdate }) => {
                             )}
                             {item.due_date && (
                               <span className={`${
-                                isOverdue(item.due_date) ? 'text-red-400' : 'text-gray-500'
+                                isOverdue(item) ? 'text-red-400' : 'text-gray-500'
                               }`}>
                                 📅 {formatDate(item.due_date, 'MMM d')}
                               </span>
@@ -177,7 +233,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ items, onUpdate }) => {
                   ))}
                   {provided.placeholder}
                   
-                  {getItemsByStatus(column.id).length === 0 && (
+                  {getItemsByColumn(column.id).length === 0 && (
                     <div className="flex items-center justify-center h-32 text-gray-600 text-sm">
                       No items
                     </div>

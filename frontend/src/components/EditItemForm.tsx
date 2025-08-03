@@ -14,6 +14,8 @@ const EditItemForm: React.FC<EditItemFormProps> = ({ item, onClose, onUpdated })
     description: item.description || '',
     status: item.status,
     priority: item.priority,
+    category: item.category,
+    for_whom: item.for_whom || '',
     due_date: item.due_date || '',
     assignee: item.assignee || '',
     tags: item.tags || []
@@ -46,9 +48,9 @@ const EditItemForm: React.FC<EditItemFormProps> = ({ item, onClose, onUpdated })
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 animate-fadeIn">
-      <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl p-8 w-full max-w-lg mx-4 animate-slideIn">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-bold gradient-text">
+      <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl p-6 w-full max-w-md mx-4 animate-slideIn max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-bold gradient-text">
             Edit Action Item
           </h2>
           <button
@@ -61,9 +63,9 @@ const EditItemForm: React.FC<EditItemFormProps> = ({ item, onClose, onUpdated })
           </button>
         </div>
         
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-3">
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">
+            <label className="block text-xs font-medium text-gray-300 mb-1">
               Title *
             </label>
             <input
@@ -76,7 +78,7 @@ const EditItemForm: React.FC<EditItemFormProps> = ({ item, onClose, onUpdated })
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">
+            <label className="block text-xs font-medium text-gray-300 mb-1">
               Description
             </label>
             <textarea
@@ -87,9 +89,9 @@ const EditItemForm: React.FC<EditItemFormProps> = ({ item, onClose, onUpdated })
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">
+              <label className="block text-xs font-medium text-gray-300 mb-1">
                 Status
               </label>
               <select
@@ -98,14 +100,12 @@ const EditItemForm: React.FC<EditItemFormProps> = ({ item, onClose, onUpdated })
                 onChange={(e) => setForm({ ...form, status: e.target.value as any })}
               >
                 <option value="todo">To Do</option>
-                <option value="in_progress">In Progress</option>
-                <option value="review">Review</option>
                 <option value="done">Done</option>
               </select>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">
+              <label className="block text-xs font-medium text-gray-300 mb-1">
                 Priority
               </label>
               <select
@@ -120,9 +120,37 @@ const EditItemForm: React.FC<EditItemFormProps> = ({ item, onClose, onUpdated })
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">
+              <label className="block text-xs font-medium text-gray-300 mb-1">
+                For Whom
+              </label>
+              <input
+                type="text"
+                className="input-glass"
+                value={form.for_whom}
+                onChange={(e) => setForm({ ...form, for_whom: e.target.value })}
+                placeholder="e.g., Arya, Sairav, Archana, Mohan"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-300 mb-1">
+                Category
+              </label>
+              <select
+                className="input-glass"
+                value={form.category}
+                onChange={(e) => setForm({ ...form, category: e.target.value as any })}
+              >
+                <option value="personal">Personal</option>
+                <option value="professional">Professional</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-300 mb-1">
                 Due Date
               </label>
               <div className="relative">
@@ -141,7 +169,7 @@ const EditItemForm: React.FC<EditItemFormProps> = ({ item, onClose, onUpdated })
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">
+              <label className="block text-xs font-medium text-gray-300 mb-1">
                 Assignee
               </label>
               <input
@@ -154,7 +182,7 @@ const EditItemForm: React.FC<EditItemFormProps> = ({ item, onClose, onUpdated })
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">
+            <label className="block text-xs font-medium text-gray-300 mb-1">
               Tags
             </label>
             <div className="flex gap-2 mb-2">

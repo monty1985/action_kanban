@@ -1,9 +1,7 @@
 import React, { useState } from 'react';
 import { ActionItem } from '../types/ActionItem';
-import { format } from 'date-fns';
 import { actionItemsApi } from '../api/actionItems';
 import EditItemForm from './EditItemForm';
-import { formatDate, parseLocalDate } from '../utils/dateUtils';
 
 interface TableViewProps {
   items: ActionItem[];
@@ -33,25 +31,38 @@ const TableView: React.FC<TableViewProps> = ({ items, onUpdate }) => {
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'high': return 'text-red-400 bg-red-900/20';
-      case 'medium': return 'text-yellow-400 bg-yellow-900/20';
-      case 'low': return 'text-green-400 bg-green-900/20';
-      default: return 'text-gray-400 bg-gray-900/20';
+      case 'high': return 'bg-red-900/30 text-red-400';
+      case 'medium': return 'bg-yellow-900/30 text-yellow-400';
+      case 'low': return 'bg-green-900/30 text-green-400';
+      default: return 'bg-gray-900/30 text-gray-400';
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'done': return 'text-green-400 bg-green-900/20';
-      case 'in_progress': return 'text-blue-400 bg-blue-900/20';
-      case 'review': return 'text-purple-400 bg-purple-900/20';
-      case 'todo': return 'text-gray-400 bg-gray-900/20';
-      default: return 'text-gray-400 bg-gray-900/20';
+      case 'done': return 'bg-green-900/30 text-green-400';
+      case 'todo': return 'bg-gray-900/30 text-gray-400';
+      default: return 'bg-gray-900/30 text-gray-400';
     }
   };
 
-  const handleRowDoubleClick = (item: ActionItem) => {
-    setEditingItem(item);
+  const getPersonColor = (person?: string) => {
+    if (!person) return '';
+    const colors: Record<string, string> = {
+      'mohan': 'border-l-4 border-blue-600',
+      'archana': 'border-l-4 border-pink-600',
+      'arya': 'border-l-4 border-purple-600',
+      'sairav': 'border-l-4 border-green-600'
+    };
+    return colors[person.toLowerCase()] || '';
+  };
+
+  const isOverdue = (item: ActionItem) => {
+    if (!item.due_date || item.status === 'done') return false;
+    const dueDate = new Date(item.due_date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return dueDate < today;
   };
 
   const handleDelete = async (id: string) => {
@@ -61,127 +72,194 @@ const TableView: React.FC<TableViewProps> = ({ items, onUpdate }) => {
         onUpdate();
       } catch (error) {
         console.error('Failed to delete item:', error);
+        alert('Failed to delete item');
       }
     }
   };
 
+  const formatDate = (dateString: string | null | undefined) => {
+    if (!dateString) return '-';
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-US', { 
+        month: 'short', 
+        day: 'numeric', 
+        year: 'numeric' 
+      });
+    } catch {
+      return '-';
+    }
+  };
+
+  console.log('TableView rendering with items:', items.length);
+
   return (
     <>
-    <div className="overflow-x-auto">
-      <table className="min-w-full">
-        <thead className="bg-[#0f0f0f] border-b border-[#2a2a2a]">
-          <tr>
-            <th 
-              className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:text-white transition-colors"
-              onClick={() => handleSort('title')}
-            >
-              Title {sortField === 'title' && (sortOrder === 'asc' ? '↑' : '↓')}
-            </th>
-            <th 
-              className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:text-white transition-colors"
-              onClick={() => handleSort('status')}
-            >
-              Status {sortField === 'status' && (sortOrder === 'asc' ? '↑' : '↓')}
-            </th>
-            <th 
-              className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:text-white transition-colors"
-              onClick={() => handleSort('priority')}
-            >
-              Priority {sortField === 'priority' && (sortOrder === 'asc' ? '↑' : '↓')}
-            </th>
-            <th 
-              className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:text-white transition-colors"
-              onClick={() => handleSort('due_date')}
-            >
-              Due Date {sortField === 'due_date' && (sortOrder === 'asc' ? '↑' : '↓')}
-            </th>
-            <th 
-              className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:text-white transition-colors"
-              onClick={() => handleSort('assignee')}
-            >
-              Assignee {sortField === 'assignee' && (sortOrder === 'asc' ? '↑' : '↓')}
-            </th>
-            <th 
-              className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:text-white transition-colors"
-              onClick={() => handleSort('created_at')}
-            >
-              Created {sortField === 'created_at' && (sortOrder === 'asc' ? '↑' : '↓')}
-            </th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-              Actions
-            </th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-[#2a2a2a]">
-          {sortedItems.map((item) => (
-            <tr 
-              key={item.id} 
-              className="hover:bg-[#2a2a2a]/50 cursor-pointer transition-colors" 
-              onDoubleClick={() => handleRowDoubleClick(item)}
-            >
-              <td className="px-6 py-4 whitespace-nowrap">
-                <div>
-                  <div className="text-sm font-medium text-white">{item.title}</div>
-                  {item.description && (
-                    <div className="text-sm text-gray-400">{item.description}</div>
-                  )}
-                </div>
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap">
-                <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(item.status)}`}>
-                  {item.status.replace('_', ' ')}
-                </span>
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap">
-                <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getPriorityColor(item.priority)}`}>
-                  {item.priority}
-                </span>
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                {formatDate(item.due_date, 'MMM d, yyyy')}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                {item.assignee || '-'}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
-                {format(parseLocalDate(item.created_at), 'MMM d, yyyy')}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setEditingItem(item);
-                  }}
-                  className="text-[#00ff88] hover:text-[#00ff88]/80 mr-2 transition-colors"
+      <div className="w-full overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full table-fixed">
+            <thead>
+              <tr className="bg-gray-800 border-b border-gray-700">
+                <th 
+                  className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:text-white w-1/4"
+                  onClick={() => handleSort('title')}
                 >
-                  Edit
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDelete(item.id);
-                  }}
-                  className="text-red-400 hover:text-red-300 transition-colors"
+                  Title {sortField === 'title' && (sortOrder === 'asc' ? '↑' : '↓')}
+                </th>
+                <th 
+                  className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:text-white w-24"
+                  onClick={() => handleSort('status')}
                 >
-                  Delete
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-    
-    {editingItem && (
-      <EditItemForm
-        item={editingItem}
-        onClose={() => setEditingItem(null)}
-        onUpdated={() => {
-          setEditingItem(null);
-          onUpdate();
-        }}
-      />
-    )}
+                  Status {sortField === 'status' && (sortOrder === 'asc' ? '↑' : '↓')}
+                </th>
+                <th 
+                  className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:text-white w-24"
+                  onClick={() => handleSort('priority')}
+                >
+                  Priority {sortField === 'priority' && (sortOrder === 'asc' ? '↑' : '↓')}
+                </th>
+                <th 
+                  className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:text-white w-28"
+                  onClick={() => handleSort('category')}
+                >
+                  Category {sortField === 'category' && (sortOrder === 'asc' ? '↑' : '↓')}
+                </th>
+                <th 
+                  className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:text-white w-28"
+                  onClick={() => handleSort('for_whom')}
+                >
+                  For Whom {sortField === 'for_whom' && (sortOrder === 'asc' ? '↑' : '↓')}
+                </th>
+                <th 
+                  className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:text-white w-32"
+                  onClick={() => handleSort('due_date')}
+                >
+                  Due Date {sortField === 'due_date' && (sortOrder === 'asc' ? '↑' : '↓')}
+                </th>
+                <th 
+                  className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:text-white w-32"
+                  onClick={() => handleSort('assignee')}
+                >
+                  Assignee {sortField === 'assignee' && (sortOrder === 'asc' ? '↑' : '↓')}
+                </th>
+                <th 
+                  className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:text-white w-32"
+                  onClick={() => handleSort('created_at')}
+                >
+                  Created {sortField === 'created_at' && (sortOrder === 'asc' ? '↑' : '↓')}
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider w-32">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-gray-900 divide-y divide-gray-700">
+              {sortedItems.length === 0 ? (
+                <tr>
+                  <td colSpan={9} className="px-4 py-8 text-center text-gray-500">
+                    <div className="flex flex-col items-center justify-center">
+                      <svg className="w-12 h-12 mb-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                      </svg>
+                      <p className="text-lg">No action items found</p>
+                      <p className="text-sm text-gray-600 mt-1">Create a new item to get started</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                sortedItems.map((item) => (
+                  <tr 
+                    key={item.id} 
+                    className={`hover:bg-gray-800 transition-colors duration-150 ${getPersonColor(item.for_whom)}`}
+                    onDoubleClick={() => setEditingItem(item)}
+                  >
+                    <td className="px-4 py-3">
+                      <div className="flex flex-col">
+                        <span className="text-sm font-medium text-white truncate">{item.title}</span>
+                        {item.description && (
+                          <span className="text-xs text-gray-400 truncate mt-1">{item.description}</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                        isOverdue(item) ? 'bg-red-900/30 text-red-400' : getStatusColor(item.status)
+                      }`}>
+                        {isOverdue(item) ? 'overdue' : item.status.replace('_', ' ')}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getPriorityColor(item.priority)}`}>
+                        {item.priority}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full ${
+                        item.category === 'professional' 
+                          ? 'bg-[#00a8ff]/20 text-[#00a8ff]' 
+                          : 'bg-purple-500/20 text-purple-400'
+                      }`}>
+                        {item.category === 'professional' ? '💼 Work' : '🏠 Personal'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      {item.for_whom && (
+                        <span className="text-sm text-gray-300">
+                          {item.for_whom}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-300">
+                      <span className={isOverdue(item) ? 'text-red-400 font-semibold' : ''}>
+                        {formatDate(item.due_date)}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-300">
+                      {item.assignee || '-'}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-400">
+                      {formatDate(item.created_at)}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingItem(item);
+                          }}
+                          className="text-blue-400 hover:text-blue-300 font-medium text-sm"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(item.id);
+                          }}
+                          className="text-red-400 hover:text-red-300 font-medium text-sm"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {editingItem && (
+        <EditItemForm
+          item={editingItem}
+          onClose={() => setEditingItem(null)}
+          onUpdated={() => {
+            setEditingItem(null);
+            onUpdate();
+          }}
+        />
+      )}
     </>
   );
 };

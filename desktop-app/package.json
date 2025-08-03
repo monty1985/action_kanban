@@ -1,0 +1,32 @@
+{
+  "name": "action-kanban-desktop",
+  "version": "1.0.0",
+  "description": "Action Kanban Desktop App",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder",
+    "dist": "electron-builder --mac --arm64"
+  },
+  "build": {
+    "appId": "com.actionkanban.desktop",
+    "productName": "Action Kanban",
+    "directories": {
+      "output": "dist"
+    },
+    "mac": {
+      "category": "public.app-category.productivity",
+      "icon": "assets/icon.icns",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["arm64"]
+        }
+      ]
+    }
+  },
+  "devDependencies": {
+    "electron": "^27.0.0",
+    "electron-builder": "^24.6.4"
+  }
+}

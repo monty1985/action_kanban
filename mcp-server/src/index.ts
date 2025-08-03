@@ -14,7 +14,7 @@ const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:13000';
 const TOOLS: Tool[] = [
   {
     name: 'create_action_item',
-    description: 'Create a new action item',
+    description: 'Create a new action item. Automatically categorizes as "professional" if title/description contains "work", "project", or "professional". Otherwise defaults to "personal".',
     inputSchema: {
       type: 'object',
       properties: {
@@ -22,7 +22,7 @@ const TOOLS: Tool[] = [
         description: { type: 'string', description: 'Detailed description' },
         status: { 
           type: 'string', 
-          enum: ['todo', 'in_progress', 'review', 'done'],
+          enum: ['todo', 'done'],
           description: 'Current status'
         },
         priority: {
@@ -30,6 +30,12 @@ const TOOLS: Tool[] = [
           enum: ['low', 'medium', 'high'],
           description: 'Priority level'
         },
+        category: {
+          type: 'string',
+          enum: ['personal', 'professional'],
+          description: 'Category of the item (defaults to personal, auto-detects professional)'
+        },
+        for_whom: { type: 'string', description: 'For whom this action is (e.g., Arya, Sairav, Archana, Mohan)' },
         due_date: { type: 'string', description: 'Due date in ISO format' },
         assignee: { type: 'string', description: 'Person assigned to this item' },
         tags: {
@@ -49,7 +55,7 @@ const TOOLS: Tool[] = [
       properties: {
         status: { 
           type: 'string', 
-          enum: ['todo', 'in_progress', 'review', 'done'],
+          enum: ['todo', 'done'],
           description: 'Filter by status'
         },
         priority: {
@@ -57,6 +63,12 @@ const TOOLS: Tool[] = [
           enum: ['low', 'medium', 'high'],
           description: 'Filter by priority'
         },
+        category: {
+          type: 'string',
+          enum: ['personal', 'professional'],
+          description: 'Filter by category (personal or professional)'
+        },
+        for_whom: { type: 'string', description: 'Filter by for whom' },
         assignee: { type: 'string', description: 'Filter by assignee' },
         search: { type: 'string', description: 'Search in title, description, and assignee' }
       }
@@ -73,7 +85,7 @@ const TOOLS: Tool[] = [
         description: { type: 'string', description: 'New description' },
         status: { 
           type: 'string', 
-          enum: ['todo', 'in_progress', 'review', 'done'],
+          enum: ['todo', 'done'],
           description: 'New status'
         },
         priority: {
@@ -81,6 +93,12 @@ const TOOLS: Tool[] = [
           enum: ['low', 'medium', 'high'],
           description: 'New priority'
         },
+        category: {
+          type: 'string',
+          enum: ['personal', 'professional'],
+          description: 'New category'
+        },
+        for_whom: { type: 'string', description: 'For whom this action is' },
         due_date: { type: 'string', description: 'New due date in ISO format' },
         assignee: { type: 'string', description: 'New assignee' },
         tags: {
@@ -101,7 +119,7 @@ const TOOLS: Tool[] = [
         id: { type: 'string', description: 'ID of the action item' },
         status: { 
           type: 'string', 
-          enum: ['todo', 'in_progress', 'review', 'done'],
+          enum: ['todo', 'done'],
           description: 'New status'
         }
       },
@@ -160,7 +178,21 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   try {
     switch (name) {
       case 'create_action_item': {
-        const response = await axios.post(`${API_BASE_URL}/api/action-items`, args || {});
+        let data = args || {};
+        
+        // Auto-detect category if not provided
+        if (!data.category) {
+          const text = `${data.title || ''} ${data.description || ''}`.toLowerCase();
+          const professionalKeywords = ['work', 'project', 'professional', 'meeting', 'client', 'deadline', 'business'];
+          
+          if (professionalKeywords.some(keyword => text.includes(keyword))) {
+            data.category = 'professional';
+          } else {
+            data.category = 'personal';
+          }
+        }
+        
+        const response = await axios.post(`${API_BASE_URL}/api/action-items`, data);
         return {
           content: [
             {
@@ -175,6 +207,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const params = new URLSearchParams();
         if (args?.status) params.append('status', args.status as string);
         if (args?.priority) params.append('priority', args.priority as string);
+        if (args?.category) params.append('category', args.category as string);
+        if (args?.for_whom) params.append('for_whom', args.for_whom as string);
         if (args?.assignee) params.append('assignee', args.assignee as string);
         if (args?.search) params.append('search', args.search as string);
         
